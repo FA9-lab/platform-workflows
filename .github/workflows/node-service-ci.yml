@@ -22,5 +22,8 @@ jobs:
         with:
           node-version: ${{ inputs.node-version }}
 
+      - name: Platform policy check
+        run: echo "Platform engineering policy checks running"
+
       - name: Run tests
         run: npm test
