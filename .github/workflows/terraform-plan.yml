@@ -1,0 +1,43 @@
+name: Terraform Plan
+
+on:
+  workflow_call:
+    inputs:
+      terraform-version:
+        description: Terraform version
+        required: false
+        type: string
+        default: "1.9.8"
+
+      working-directory:
+        description: Terraform working directory
+        required: false
+        type: string
+        default: "infrastructure"
+
+jobs:
+  plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ inputs.terraform-version }}
+
+      - name: Terraform Init
+        run: terraform init -backend=false
+
+      - name: Terraform Plan
+        run: terraform plan -input=false -out=tfplan
+
+      - name: Show Terraform Plan
+        run: terraform show -no-color tfplan
