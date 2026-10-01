@@ -15,6 +15,26 @@ on:
         type: string
         default: "infrastructure"
 
+      backend-resource-group:
+        description: Resource group containing Terraform state storage
+        required: true
+        type: string
+
+      backend-storage-account:
+        description: Storage account containing Terraform state
+        required: true
+        type: string
+
+      backend-container:
+        description: Blob container containing Terraform state
+        required: true
+        type: string
+
+      backend-key:
+        description: Terraform state blob name
+        required: true
+        type: string
+
     secrets:
       AZURE_CLIENT_ID:
         required: true
@@ -59,7 +79,14 @@ jobs:
           terraform_version: ${{ inputs.terraform-version }}
 
       - name: Terraform Init
-        run: terraform init -input=false
+        run: |
+          terraform init \
+            -input=false \
+            -backend-config="resource_group_name=${{ inputs.backend-resource-group }}" \
+            -backend-config="storage_account_name=${{ inputs.backend-storage-account }}" \
+            -backend-config="container_name=${{ inputs.backend-container }}" \
+            -backend-config="key=${{ inputs.backend-key }}" \
+            -backend-config="use_oidc=true"
 
       - name: Terraform Plan
         run: terraform plan -input=false -out=tfplan
