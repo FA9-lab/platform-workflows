@@ -1,0 +1,81 @@
+name: Terraform Destroy Plan
+
+on:
+  workflow_call:
+    inputs:
+      terraform-version:
+        description: Terraform version
+        required: false
+        type: string
+        default: "1.9.8"
+
+      working-directory:
+        description: Terraform working directory
+        required: false
+        type: string
+        default: "."
+
+      deployment-name:
+        description: Canonical platform deployment name
+        required: true
+        type: string
+
+    secrets:
+      AZURE_CLIENT_ID:
+        required: true
+      AZURE_TENANT_ID:
+        required: true
+      AZURE_SUBSCRIPTION_ID:
+        required: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  terraform-destroy-plan:
+    name: Terraform Destroy Plan
+    runs-on: ubuntu-latest
+
+    env:
+      ARM_USE_OIDC: "true"
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Azure Login via OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ inputs.terraform-version }}
+
+      - name: Terraform Init
+        run: |
+          terraform init \
+            -input=false \
+            -backend-config="resource_group_name=rg-platform-lab" \
+            -backend-config="storage_account_name=tfstatefa9lab1234" \
+            -backend-config="container_name=tfstate" \
+            -backend-config="key=${{ inputs.deployment-name }}.tfstate" \
+            -backend-config="use_oidc=true" \
+            -backend-config="use_azuread_auth=true"
+
+      - name: Terraform Destroy Plan
+        run: terraform plan -destroy -input=false -out=tfplan
+
+      - name: Show Terraform Destroy Plan
+        run: terraform show -no-color tfplan
